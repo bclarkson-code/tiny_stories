@@ -61,6 +61,8 @@ def tokenise(text: str, split: Split, config: Config, force_tokenise: bool = Fal
     # first split into documents and then tokenise each document individually
     # When we're training, we'll try and fit as many documents in out context window as we can
     documents = text.split("<|endoftext|>")
+    if config.num_documents:
+        documents = documents[:num_documents]
 
     tokens = process_map(
         tokeniser.encode_ordinary,

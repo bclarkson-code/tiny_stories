@@ -44,6 +44,7 @@ class Config:
     context_window: int = 1024
     num_workers: int = 4
     use_inifite_dataloader = True
+    num_documents: int | None = 500_000
 
     # model
     n_layer: int = 12
@@ -105,6 +106,8 @@ class BabyModelCPUConfig(Config):
     dropout: float = 0.2
     gradient_accumulation_steps: int = 1
     num_workers: int = 0
+    # running on the entire dataset uses loads of ram so we'll trim it down for cpu
+    num_documents: int | None = 500_000
 
     learning_rate: float = 1e-3  # with baby networks can afford to go a bit higher
     max_iters: int = 5000
