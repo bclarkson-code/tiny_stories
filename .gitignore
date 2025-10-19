@@ -1,0 +1,9 @@
+.venv*
+src/tiny_stories/data/*.pkl
+src/tiny_stories/data/*.txt
+*.lock
+*.pkl
+*.pt
+
+*__pycache__*
+wandb

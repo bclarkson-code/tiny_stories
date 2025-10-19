@@ -1,0 +1,23 @@
+[project]
+name = "tiny-stories"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+authors = [
+    { name = "benedictclarkson1", email = "benedictclarkson1@gmail.com" }
+]
+requires-python = ">=3.12"
+dependencies = [
+    "gradio>=5.49.1",
+    "numpy>=2.3.4",
+    "regex>=2025.9.18",
+    "requests>=2.32.5",
+    "tiktoken>=0.12.0",
+    "torch>=2.9.0",
+    "tqdm>=4.67.1",
+    "wandb>=0.22.2",
+]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
