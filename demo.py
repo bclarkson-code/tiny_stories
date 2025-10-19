@@ -16,7 +16,6 @@ from src.tiny_stories.config import BabyModelCPUConfig
 def load_model(out_dir="out", device=None):
     """Load the most recent model checkpoint."""
 
-    # Determine device
     if device is None:
         if torch.cuda.is_available():
             device = "cuda:1"
@@ -27,14 +26,12 @@ def load_model(out_dir="out", device=None):
 
     print(f"Loading model on {device}...")
 
-    # Load checkpoint
     ckpt_path = os.path.join(out_dir, "ckpt.pt")
     if not os.path.exists(ckpt_path):
         raise FileNotFoundError(f"No checkpoint found at {ckpt_path}")
 
     checkpoint = torch.load(ckpt_path, map_location=device, weights_only=False)
 
-    # Reconstruct config from checkpoint
     config = BabyModelCPUConfig()
     if "config" in checkpoint:
         # Update config with saved values
@@ -43,10 +40,8 @@ def load_model(out_dir="out", device=None):
             if hasattr(config, key):
                 setattr(config, key, value)
 
-    # Create model
     model = GPT(config)
 
-    # Load state dict, handling compiled model prefix
     state_dict = checkpoint["model"]
     unwanted_prefix = "_orig_mod."
     for k, v in list(state_dict.items()):
@@ -72,11 +67,9 @@ def setup_tokenizer():
     return encode, decode
 
 
-# Global variables for model, device, and tokenizer
 model, device, config = load_model()
 encode, decode = setup_tokenizer()
 
-# Setup autocast context
 device_type = "cuda" if "cuda" in device else "cpu"
 dtype_map = {
     "float32": torch.float32,
@@ -103,11 +96,9 @@ def generate_text_streaming(
         yield "Please enter a prompt!"
         return
 
-    # Encode the prompt
     start_ids = encode(prompt)
     idx = torch.tensor(start_ids, dtype=torch.long, device=device)[None, ...]
 
-    # Generate tokens one at a time and yield decoded text progressively
     with torch.no_grad():
         with ctx:
             for step in range(int(max_new_tokens)):
@@ -118,38 +109,30 @@ def generate_text_streaming(
                     else idx[:, -config.context_window :]
                 )
 
-                # Forward pass
                 logits, _ = model(idx_cond)
 
-                # Get logits for the last position and scale by temperature
                 logits = logits[:, -1, :] / temperature
 
-                # Apply top-k filtering if specified
                 if top_k > 0:
                     top_k_int = int(top_k)
                     v, _ = torch.topk(logits, min(top_k_int, logits.size(-1)))
                     logits[logits < v[:, [-1]]] = -float("Inf")
 
-                # Convert to probabilities and sample
                 probs = torch.nn.functional.softmax(logits, dim=-1)
                 idx_next = torch.multinomial(probs, num_samples=1)
 
-                # Append to sequence
                 idx = torch.cat((idx, idx_next), dim=1)
 
                 # Check if we've generated the end-of-text token
                 if idx_next.item() == config.eot_token_id:
-                    # Decode and yield the final text (without the EOT token visible)
                     generated_text = decode(idx[0].tolist()[:-1])
                     yield generated_text
                     break
 
-                # Decode and yield the current full text
                 generated_text = decode(idx[0].tolist())
                 yield generated_text
 
 
-# Create Gradio interface
 with gr.Blocks(title="TinyStories GPT Demo") as demo:
     gr.Markdown(
         """
