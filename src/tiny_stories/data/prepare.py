@@ -6,10 +6,11 @@ import requests
 
 import tiktoken
 from enum import Enum
-from logging import getLogger
+import logging 
 from tiny_stories.config import Config
 
-logger = getLogger()
+log_config = logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(log_config)
 
 
 class Split(Enum):
@@ -34,9 +35,11 @@ def download_raw_dataset(
     if path.exists() and not force_download:
         return path
 
+    logger.info("Downloading file: {url}...")
     with open(path, "w", encoding="utf-8") as f:
         data = requests.get(url).text
         f.write(data)
+    logger.info("Saved file: {url} to {path}")
     return path
 
 
@@ -53,7 +56,7 @@ def tokenise(text: str, split: Split, config: Config, force_tokenise: bool = Fal
             save_path = Path(__file__).parent / config.train_token_path
 
     if save_path.exists() and not force_tokenise:
-        logger.info(f"{str(save_path)} already exists, not retokenising")
+        logger.info(f"{str(save_path)} already exists, not re-downloading")
     # The text is in the form of short stories, separated by <|endoftext|> strings so we'll
     # first split into documents and then tokenise each document individually
     # When we're training, we'll try and fit as many documents in out context window as we can
@@ -72,8 +75,8 @@ def tokenise(text: str, split: Split, config: Config, force_tokenise: bool = Fal
 
 if __name__ == "__main__":
     config = Config()
-    split = Split.VALID
-
-    path = download_raw_dataset(split)
-    all_words = path.read_text()
-    tokenise(text=all_words, split=split, config=config)
+    for split in [Split.VALID, Split.TRAIN]:
+        logger.info(f"Preparing {split.value} dataset")
+        path = download_raw_dataset(split)
+        all_words = path.read_text()
+        tokenise(text=all_words, split=split, config=config)

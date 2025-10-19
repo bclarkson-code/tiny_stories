@@ -4,7 +4,7 @@ version = "0.1.0"
 description = "Add your description here"
 readme = "README.md"
 authors = [
-    { name = "benedictclarkson1", email = "benedictclarkson1@gmail.com" }
+    { name = "benedictclarkson1", email = "benedictclarkson1@gmail.com" },
 ]
 requires-python = ">=3.12"
 dependencies = [
@@ -21,3 +21,6 @@ dependencies = [
 [build-system]
 requires = ["hatchling"]
 build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/tiny_stories"]
