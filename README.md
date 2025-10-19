@@ -18,7 +18,7 @@ This project requires Python 3.12 or higher and uses `uv` for package management
 
 ```bash
 # Clone the repository
-git clone [<your-repo-url>](https://github.com/bclarkson-code/tiny_stories.git)
+git clone https://github.com/bclarkson-code/tiny_stories.git
 cd tiny_stories
 
 # Install dependencies using uv
