@@ -192,4 +192,4 @@ This project uses the TinyStories dataset from [HuggingFace](https://huggingface
 ## Acknowledgments
 
 - TinyStories dataset by Ronen Eldan and Yuanzhi Li
-- Architecture inspired by Andrej Karpathy's nanoGPT
+- Repo ~stolen from~ inspired by Andrej Karpathy's [nanoGPT](https://github.com/karpathy/nanoGPT)
