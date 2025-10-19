@@ -2,27 +2,54 @@
 This training script runs on a single GPU.
 
 To run:
-$ python train.py --batch_size=32 --compile=False
+$ python train.py --config baby_gpu --resume
+$ python train.py --config gpt2
 """
 
 import os
 import time
 import math
 import itertools
+import argparse
 from contextlib import nullcontext
 
 import torch
 
 from tiny_stories.model import GPT
 from tiny_stories.data.prepare import Split
-from tiny_stories.config import BabyModelGPUConfig
+from tiny_stories.config import load_config, ConfigType
 from tiny_stories.dataset import load_dataloaders
 import logging
 
 log_config = logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(log_config)
 
-config = BabyModelGPUConfig()
+# Parse command line arguments
+parser = argparse.ArgumentParser(description="Train GPT model on TinyStories dataset")
+parser.add_argument(
+    "--config",
+    type=str,
+    default="baby_gpu",
+    choices=["gpt2", "baby_cpu", "baby_gpu"],
+    help="Configuration to use (default: baby_gpu)"
+)
+parser.add_argument(
+    "--resume",
+    action="store_true",
+    help="Resume training from checkpoint"
+)
+args = parser.parse_args()
+
+config_type = ConfigType(args.config)
+config = load_config(config_type)
+
+# Override init_from based on resume flag
+if args.resume:
+    config.init_from = "resume"
+    logger.info(f"Resume flag set - will attempt to resume training from {config.out_dir}")
+else:
+    config.init_from = "scratch"
+    logger.info("Starting training from scratch")
 
 # various inits, derived attributes, I/O setup
 device = config.device
@@ -33,11 +60,13 @@ logger.info(f"tokens per iteration will be: {tokens_per_iter:,}")
 
 os.makedirs(config.out_dir, exist_ok=True)
 torch.manual_seed(1337)
+
 torch.backends.cuda.matmul.allow_tf32 = True  # allow tf32 on matmul
 torch.backends.cudnn.allow_tf32 = True  # allow tf32 on cudnn
 device_type = "cuda" if "cuda" in device else "cpu"  # for later use in torch.autocast
 logger.info(f"Using device: {device}")
 device = torch.device(device)
+
 # note: float16 data type will automatically use a GradScaler
 ptdtype = {
     "float32": torch.float32,
@@ -52,10 +81,10 @@ ctx = (
 logger.info("Loading data...")
 train_dl, valid_dl = load_dataloaders(config)
 
-# init these up here, can override if init_from='resume' (i.e. from a checkpoint)
 step = 0
 best_val_loss = 1e9
 
+# are we starting from scratch or resuming
 if config.init_from == "scratch":
     # init a new model from scratch
     print("Initializing a new model from scratch")
@@ -91,10 +120,7 @@ checkpoint = None  # free up memory
 if config.compile:
     print("compiling the model... (takes a ~minute)")
     unoptimized_model = model
-    model = torch.compile(model)  # requires PyTorch 2.0
-
-# model is ready for training on single GPU
-
+    model = torch.compile(model) 
 
 # helps estimate an arbitrarily accurate loss over either split using many batches
 @torch.no_grad()
@@ -138,19 +164,19 @@ def get_lr(it):
 # logging
 if config.wandb_log:
     import wandb
-
     wandb.init(project=config.wandb_project, config=config)
 
 # training loop
 if config.use_inifite_dataloader:
     # loop over our dataset forever
     train_dl = itertools.cycle(train_dl)
+
 train_dl = iter(train_dl)
 batch = next(train_dl)  # fetch the very first batch
 inputs = batch["input_ids"].to(device)
 labels = batch["labels"].to(device)
 
-t0 = time.time()
+start_time = time.time()
 local_iter_num = 0  # number of iterations in the lifetime of this process
 raw_model = model
 running_tflops = -1.0
@@ -218,20 +244,21 @@ while True:
     optimizer.zero_grad(set_to_none=True)
 
     # timing and logging
-    t1 = time.time()
-    dt = t1 - t0
-    t0 = t1
+    end_time = time.time()
+    difference = end_time - start_time
+    start_time = end_time
     if step % config.log_interval == 0:
         # get loss as float. note: this is a CPU-GPU sync point
         # scale up to undo the division above, approximating the true total loss (exact would have been a sum)
-        lossf = loss.item() * config.gradient_accumulation_steps
+        step_loss = loss.item() * config.gradient_accumulation_steps
         if local_iter_num >= 5:  # let the training loop settle a bit
             tflops = raw_model.estimate_tflops(
-                config.batch_size * config.gradient_accumulation_steps, dt
+                config.batch_size * config.gradient_accumulation_steps, difference
             )
             running_tflops = tflops if running_tflops == -1.0 else 0.9 * running_tflops + 0.1 * tflops
-        print(
-            f"iter {step}: loss {lossf:.4f}, time {dt*1000:.2f}ms, tflops {running_tflops:.2f}"
+        wandb.log({'train/step_loss': step_loss, "train/step_time":difference, "train/tflops": running_tflops}, step=step)
+        logging.info(
+            f"iter {step}: loss {step_loss:.4f}, time {difference*1000:.2f}ms, tflops {running_tflops:.2f}"
         )
     step += 1
     local_iter_num += 1

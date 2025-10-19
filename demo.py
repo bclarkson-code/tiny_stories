@@ -19,7 +19,7 @@ def load_model(out_dir="out", device=None):
     # Determine device
     if device is None:
         if torch.cuda.is_available():
-            device = "cuda"
+            device = "cuda:1"
         elif torch.backends.mps.is_available():
             device = "mps"
         else:

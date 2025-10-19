@@ -3,6 +3,7 @@ Training configuration for GPT model.
 """
 
 from dataclasses import dataclass
+from enum import Enum
 from pathlib import Path
 import torch
 
@@ -125,7 +126,7 @@ class BabyModelGPUConfig(Config):
     wandb_project: str = "tiny_stories"
     eval_interval: int = 500
 
-    batch_size: int = 256
+    batch_size: int = 64
     context_window: int = 512
     n_layer: int = 6
     n_head: int = 6
@@ -142,3 +143,18 @@ class BabyModelGPUConfig(Config):
 
     warmup_iters: int = 100  # not super necessary potentially
     device: str = "cuda"
+
+class ConfigType(Enum):
+    GPT2 = "gpt2"
+    BABY_CPU = "baby_cpu"
+    BABY_GPU = "baby_gpu"
+
+
+def load_config(config_type: ConfigType = ConfigType.BABY_GPU) -> Config:
+    match config_type:
+        case ConfigType.GPT2:
+            return Config()
+        case ConfigType.BABY_CPU:
+            return BabyModelCPUConfig()
+        case ConfigType.BABY_GPU:
+            return BabyModelGPUConfig()
