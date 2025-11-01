@@ -1,12 +1,13 @@
+import logging
 import os
-from pathlib import Path
 import pickle
-from tqdm.contrib.concurrent import process_map
-import requests
-
-import tiktoken
 from enum import Enum
-import logging 
+from pathlib import Path
+
+import requests
+import tiktoken
+from tqdm.contrib.concurrent import process_map  # type: ignore
+
 from tiny_stories.config import Config
 
 log_config = logging.basicConfig(level=logging.INFO)
@@ -62,9 +63,9 @@ def tokenise(text: str, split: Split, config: Config, force_tokenise: bool = Fal
     # When we're training, we'll try and fit as many documents in out context window as we can
     documents = text.split("<|endoftext|>")
     if config.num_documents:
-        documents = documents[:num_documents]
+        documents = documents[: config.num_documents]
 
-    tokens = process_map(
+    tokens = process_map(  # type: ignore
         tokeniser.encode_ordinary,
         documents,
         max_workers=os.cpu_count(),

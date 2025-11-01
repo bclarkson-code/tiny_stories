@@ -5,6 +5,7 @@ Training configuration for GPT model.
 from dataclasses import dataclass
 from enum import Enum
 from pathlib import Path
+
 import torch
 
 
@@ -47,9 +48,9 @@ class Config:
     num_documents: int | None = 500_000
 
     # model
-    n_layer: int = 12
-    n_head: int = 12
-    n_embd: int = 768
+    n_layers: int = 12
+    n_heads: int = 12
+    embedding_dim: int = 768
     dropout: float = 0.0  # for pretraining 0 is good, for finetuning try 0.1+
     bias: bool = False  # do we use bias inside LayerNorm and Linear layers?
 
@@ -73,9 +74,7 @@ class Config:
     backend: str = "nccl"  # 'nccl', 'gloo', etc.
 
     # system
-    device: str = (
-        "cuda"  # examples: 'cpu', 'cuda', 'cuda:0', 'cuda:1' etc., or try 'mps' on macbooks
-    )
+    device: str = "cuda"  # examples: 'cpu', 'cuda', 'cuda:0', 'cuda:1' etc., or try 'mps' on macbooks
     dtype: str = (
         "bfloat16"
         if torch.cuda.is_available() and torch.cuda.is_bf16_supported()
@@ -146,6 +145,7 @@ class BabyModelGPUConfig(Config):
 
     warmup_iters: int = 100  # not super necessary potentially
     device: str = "cuda"
+
 
 class ConfigType(Enum):
     GPT2 = "gpt2"
