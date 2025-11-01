@@ -1,11 +1,14 @@
-from torch.utils.data import Dataset as TorchDataset, DataLoader
-import torch
-import pickle
-from tiny_stories.config import Config
-from pathlib import Path
-from tiny_stories.data.prepare import Split
-from tqdm import tqdm
 import logging
+import pickle
+from pathlib import Path
+
+import torch
+from torch.utils.data import DataLoader
+from torch.utils.data import Dataset as TorchDataset
+from tqdm import tqdm
+
+from tiny_stories.config import Config
+from tiny_stories.data.prepare import Split
 
 config = logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(config)
@@ -42,7 +45,7 @@ class Dataset(TorchDataset):
             documents = pickle.load(f)
         return documents
 
-    def _pack_documents(self, documents: list[list[int]]):
+    def _pack_documents(self, documents: list[list[int]]) -> list[list[int]]:
         packed = []
         current_sample = []
 

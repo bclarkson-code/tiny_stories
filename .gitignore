@@ -7,3 +7,4 @@ src/tiny_stories/data/*.txt
 
 *__pycache__*
 wandb
+notebook.ipynb

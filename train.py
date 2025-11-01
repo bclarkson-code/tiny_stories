@@ -6,20 +6,20 @@ $ python train.py --config baby_gpu --resume
 $ python train.py --config gpt2
 """
 
+import argparse
+import itertools
+import logging
+import math
 import os
 import time
-import math
-import itertools
-import argparse
 from contextlib import nullcontext
 
 import torch
 
-from tiny_stories.model import GPT
+from tiny_stories.config import ConfigType, load_config
 from tiny_stories.data.prepare import Split
-from tiny_stories.config import load_config, ConfigType
 from tiny_stories.dataset import load_dataloaders
-import logging
+from tiny_stories.model import GPT
 
 log_config = logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(log_config)
@@ -30,13 +30,11 @@ parser.add_argument(
     "--config",
     type=str,
     default="baby_gpu",
-    choices=["gpt2", "baby_cpu", "baby_gpu"],
-    help="Configuration to use (default: baby_gpu)"
+    choices=list(ConfigType.__members__),
+    help="Configuration to use (default: baby_gpu)",
 )
 parser.add_argument(
-    "--resume",
-    action="store_true",
-    help="Resume training from checkpoint"
+    "--resume", action="store_true", help="Resume training from checkpoint"
 )
 args = parser.parse_args()
 
@@ -46,7 +44,9 @@ config = load_config(config_type)
 # Override init_from based on resume flag
 if args.resume:
     config.init_from = "resume"
-    logger.info(f"Resume flag set - will attempt to resume training from {config.out_dir}")
+    logger.info(
+        f"Resume flag set - will attempt to resume training from {config.out_dir}"
+    )
 else:
     config.init_from = "scratch"
     logger.info("Starting training from scratch")
@@ -120,7 +120,8 @@ checkpoint = None  # free up memory
 if config.compile:
     print("compiling the model... (takes a ~minute)")
     unoptimized_model = model
-    model = torch.compile(model) 
+    model = torch.compile(model)
+
 
 # helps estimate an arbitrarily accurate loss over either split using many batches
 @torch.no_grad()
@@ -164,6 +165,7 @@ def get_lr(it):
 # logging
 if config.wandb_log:
     import wandb
+
     wandb.init(project=config.wandb_project, config=config)
 
 # training loop
@@ -181,7 +183,6 @@ local_iter_num = 0  # number of iterations in the lifetime of this process
 raw_model = model
 running_tflops = -1.0
 while True:
-
     # determine and set the learning rate for this iteration
     lr = get_lr(step) if config.decay_lr else config.learning_rate
     for param_group in optimizer.param_groups:
@@ -255,10 +256,21 @@ while True:
             tflops = raw_model.estimate_tflops(
                 config.batch_size * config.gradient_accumulation_steps, difference
             )
-            running_tflops = tflops if running_tflops == -1.0 else 0.9 * running_tflops + 0.1 * tflops
-        wandb.log({'train/step_loss': step_loss, "train/step_time":difference, "train/tflops": running_tflops}, step=step)
+            running_tflops = (
+                tflops
+                if running_tflops == -1.0
+                else 0.9 * running_tflops + 0.1 * tflops
+            )
+        wandb.log(
+            {
+                "train/step_loss": step_loss,
+                "train/step_time": difference,
+                "train/tflops": running_tflops,
+            },
+            step=step,
+        )
         logging.info(
-            f"iter {step}: loss {step_loss:.4f}, time {difference*1000:.2f}ms, tflops {running_tflops:.2f}"
+            f"iter {step}: loss {step_loss:.4f}, time {difference * 1000:.2f}ms, tflops {running_tflops:.2f}"
         )
     step += 1
     local_iter_num += 1
