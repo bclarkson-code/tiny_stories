@@ -70,13 +70,13 @@ class CausalSelfAttention(nn.Module):
         query, key, value = self.c_attn(x).split(self.n_embd, dim=2)
         key = key.view(
             batch_size, sequence_len, self.n_head, embedding_dim // self.n_head
-        ).transpose(1, 2)  # (B, nh, T, hs)
+        ).transpose(1, 2)
         query = query.view(
             batch_size, sequence_len, self.n_head, embedding_dim // self.n_head
-        ).transpose(1, 2)  # (B, nh, T, hs)
+        ).transpose(1, 2)
         value = value.view(
             batch_size, sequence_len, self.n_head, embedding_dim // self.n_head
-        ).transpose(1, 2)  # (B, nh, T, hs)
+        ).transpose(1, 2)
 
         # causal self-attention; Self-attend: (B, nh, T, hs) x (B, nh, hs, T) -> (B, nh, T, T)
         if self.flash:
